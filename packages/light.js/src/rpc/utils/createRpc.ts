@@ -3,10 +3,10 @@
 //
 // SPDX-License-Identifier: MIT
 
+import { defer, merge, Observable, of, OperatorFunction } from 'rxjs';
 import { isFunction } from '@parity/api/lib/util/types';
 // @ts-ignore Unfortunately no types for memoizee/weak.
 import * as memoizeeWeak from 'memoizee/weak';
-import { merge, Observable, OperatorFunction } from 'rxjs';
 
 import { createApiFromProvider, getApi } from '../../api';
 import { distinctReplayRefCount } from '../../utils/operators';
@@ -26,7 +26,7 @@ import { Metadata, RpcObservableOptions } from '../../types';
 const createRpcWithApi = memoizeeWeak(
   <Source, Out>(api: any, metadata: Metadata<Source, Out>, ...args: any[]) => {
     // The source Observable can either be another RpcObservable (in the
-    // `dependsOn` field), or anObservable built by merging all the
+    // `dependsOn` field), or an Observable built by merging all the
     // FrequencyObservables
     const source$ = metadata.dependsOn
       ? metadata.dependsOn(...args, { provider: api.provider })
@@ -67,12 +67,15 @@ const createRpcWithApi = memoizeeWeak(
 const createRpc = <Source, Out>(metadata: Metadata<Source, Out>) => (
   options: RpcObservableOptions = {}
 ) => (...args: any[]) => {
-  const { provider } = options;
-  const api = provider ? createApiFromProvider(provider) : getApi();
-
-  return createRpcWithApi<Source, Out>(api, metadata, ...args) as Observable<
-    Out
-  >;
+  // Evaluate api only once we subscribe
+  return defer(() => {
+    const { provider } = options;
+    const api = provider ? createApiFromProvider(provider) : getApi();
+    console.log('Creating RPC with api',api);
+    return createRpcWithApi<Source, Out>(api, metadata, ...args) as Observable<
+      Out
+    >;
+  })  
 };
 
 export default createRpc;

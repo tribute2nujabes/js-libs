@@ -69,6 +69,7 @@ const createApi = (
     },
     {
       isPubSub,
+      resolveWith,
       pollMethod() {
         return isError
           ? Promise.reject(resolveWith)
